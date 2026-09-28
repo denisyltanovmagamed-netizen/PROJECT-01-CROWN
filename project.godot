@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="PROJECT-01-CROWN"
+run/main_scene="uid://bxk06n38rttfs"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 

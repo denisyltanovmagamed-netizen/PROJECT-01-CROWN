@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://bxk06n38rttfs"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_13qdw"]
+size = Vector2(20, 20)
+
+[node name="Main" type="Node3D" unique_id=369473870]
+
+[node name="Ground" type="MeshInstance3D" parent="." unique_id=137150558]
+mesh = SubResource("PlaneMesh_13qdw")
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1041718797]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 10, 10)
+current = true
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=591057931]
+transform = Transform3D(0.8660254, 0.38302222, -0.32139382, 0, 0.64278764, 0.76604444, 0.5, -0.66341394, 0.5566704, 0, 0, 0)
