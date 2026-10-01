@@ -11,6 +11,7 @@ var camera: Camera3D
 func _ready() -> void:
     camera = $Camera
     _create_pedestal()
+    _create_obstacles()
     _spawn_gameplay()
 
 func _process(_delta: float) -> void:
@@ -93,3 +94,33 @@ func _apply_player_material(player: Node3D, color: Color) -> void:
     for child in visual.get_children():
         if child is MeshInstance3D:
             child.material_override = material
+
+
+func _create_obstacles() -> void:
+    _create_obstacle(Vector3(0.0, 0.75, -4.0), Vector3(3.0, 1.5, 0.8))
+    _create_obstacle(Vector3(4.0, 0.75, 0.0), Vector3(0.8, 1.5, 3.0))
+    _create_obstacle(Vector3(0.0, 0.75, 4.0), Vector3(3.0, 1.5, 0.8))
+    _create_obstacle(Vector3(-4.0, 0.75, 0.0), Vector3(0.8, 1.5, 3.0))
+
+func _create_obstacle(pos: Vector3, size: Vector3) -> void:
+    var body := StaticBody3D.new()
+    body.position = pos
+    body.collision_layer = 1
+    body.collision_mask = 1
+    add_child(body)
+
+    var mesh := MeshInstance3D.new()
+    var box := BoxMesh.new()
+    box.size = size
+    mesh.mesh = box
+    var material := StandardMaterial3D.new()
+    material.albedo_color = Color(0.18, 0.2, 0.23)
+    material.roughness = 0.8
+    mesh.material_override = material
+    body.add_child(mesh)
+
+    var collision := CollisionShape3D.new()
+    var shape := BoxShape3D.new()
+    shape.size = size
+    collision.shape = shape
+    body.add_child(collision)
