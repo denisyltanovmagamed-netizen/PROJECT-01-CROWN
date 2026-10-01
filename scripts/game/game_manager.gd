@@ -3,8 +3,9 @@ extends Node
 const ROUND_TIME: float = 180.0
 const CLAIM_DISTANCE: float = 2.0
 const STEAL_DISTANCE: float = 1.15
-const STEAL_COOLDOWN: float = 0.35
+const STEAL_COOLDOWN: float = 0.12
 const COUNTDOWN_TIME: float = 3.0
+const ATTACK_LANE_RADIUS: float = 0.72
 
 var round_time: float = ROUND_TIME
 var countdown_time: float = COUNTDOWN_TIME
@@ -115,18 +116,26 @@ func _check_steal() -> void:
                 continue
             if _horizontal_distance(player.global_position, crown_holder.global_position) <= STEAL_DISTANCE:
                 _set_crown_holder(player)
-                steal_cooldown = STEAL_COOLDOWN
                 status_label.text = "%s украл корону!" % player.name
                 return
+
+    # Check the closest AI first. This makes the closest attacker steal
+    # immediately instead of depending on array order.
+    var closest_ai: CharacterBody3D = null
+    var closest_distance := INF
 
     for player in players:
         if player == crown_holder or not player.is_dummy:
             continue
-        if _horizontal_distance(player.global_position, crown_holder.global_position) <= STEAL_DISTANCE:
-            _set_crown_holder(player)
-            steal_cooldown = STEAL_COOLDOWN
-            status_label.text = "%s украл корону!" % player.name
-            return
+
+        var distance := _horizontal_distance(player.global_position, crown_holder.global_position)
+        if distance <= STEAL_DISTANCE and distance < closest_distance:
+            closest_distance = distance
+            closest_ai = player
+
+    if closest_ai != null:
+        _set_crown_holder(closest_ai)
+        status_label.text = "%s украл корону!" % closest_ai.name
 
 func _horizontal_distance(a: Vector3, b: Vector3) -> float:
     var a_flat := Vector2(a.x, a.z)
@@ -159,7 +168,7 @@ func _update_ai_targets() -> void:
                 continue
 
             var angle := (TAU / 3.0) * dummy_index
-            var approach_point := crown.global_position + Vector3(cos(angle), 0.0, sin(angle)) * 1.0
+            var approach_point := crown.global_position + Vector3(cos(angle), 0.0, sin(angle)) * 0.9
             player.set_target_point(crown, approach_point)
             dummy_index += 1
         return
@@ -169,42 +178,18 @@ func _update_ai_targets() -> void:
         if player.is_dummy and player != crown_holder:
             attackers.append(player)
 
-    var direct_attacker: CharacterBody3D = null
-    var direct_distance := INF
-
+    # The AI are assigned fixed attack lanes around the crown holder.
+    # They approach from different sides instead of forming one pile.
     for player in attackers:
-        var distance := _horizontal_distance(player.global_position, crown_holder.global_position)
-        if distance < direct_distance:
-            direct_distance = distance
-            direct_attacker = player
+        var lane_angle := (TAU / maxf(1.0, float(attackers.size()))) * float(attackers.find(player))
+        var lane_direction := Vector3(cos(lane_angle), 0.0, sin(lane_angle))
+        var attack_point := crown_holder.global_position + lane_direction * ATTACK_LANE_RADIUS
+        player.set_target_point(crown_holder, attack_point)
 
-    for player in players:
-        if not player.is_dummy:
-            continue
-
-        if player == crown_holder:
-            var nearest_opponent: CharacterBody3D = _find_nearest_opponent(player)
-            player.set_target(nearest_opponent)
-            continue
-
-        if player == direct_attacker:
-            player.set_target(crown_holder)
-            continue
-
-        var to_holder := crown_holder.global_position - player.global_position
-        to_holder.y = 0.0
-        if to_holder.length_squared() <= 0.01:
-            player.set_target(crown_holder)
-            continue
-
-        to_holder = to_holder.normalized()
-        var side := Vector3(-to_holder.z, 0.0, to_holder.x)
-
-        # Each non-direct AI gets a different interception lane.
-        # This prevents all attackers from choosing the same point.
-        var side_sign := 1.0 if player.ai_slot % 2 == 0 else -1.0
-        var flank_point := crown_holder.global_position + side * side_sign * 2.8 - to_holder * 0.8
-        player.set_target_point(crown_holder, flank_point)
+    # The crown holder runs away from the nearest opponent.
+    if crown_holder.is_dummy:
+        var nearest_opponent: CharacterBody3D = _find_nearest_opponent(crown_holder)
+        crown_holder.set_target(nearest_opponent)
 
 func _find_nearest_opponent(from_player: CharacterBody3D) -> CharacterBody3D:
     var nearest: CharacterBody3D = null
