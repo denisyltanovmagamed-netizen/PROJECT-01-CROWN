@@ -62,39 +62,31 @@ func _handle_dummy_ai() -> void:
     var direction: Vector3 = target_position - global_position
     direction.y = 0.0
 
-    if direction.length_squared() <= 0.01:
-        velocity = Vector3.ZERO
-        return
+    if direction.length_squared() <= 0.0001:
+        # Never freeze an AI on an interception point.
+        if ai_use_target_point:
+            direction = target.global_position - global_position
+            direction.y = 0.0
+        if direction.length_squared() <= 0.0001:
+            velocity = Vector3.ZERO
+            return
 
-    direction = direction.normalized()
+    direction = _apply_separation(direction.normalized())
 
-    if ai_target_is_crown:
-        direction = _apply_separation(direction)
-        velocity.x = direction.x * move_speed * 0.78
-        velocity.z = direction.z * move_speed * 0.78
-    elif get_meta("crown_holder", false):
+    if get_meta("crown_holder", false):
         var distance_from_center := Vector2(global_position.x, global_position.z).length()
-        var escape_direction: Vector3
+        var escape_direction := -direction
 
-        if distance_from_center < 6.0:
-            escape_direction = -direction
-        else:
+        if distance_from_center > 7.0:
             var center_direction := Vector3(-global_position.x, 0.0, -global_position.z).normalized()
-            escape_direction = (-direction * 0.8 + center_direction * 0.6).normalized()
+            escape_direction = (escape_direction * 0.65 + center_direction * 0.9).normalized()
 
         escape_direction = _apply_separation(escape_direction)
-        velocity.x = escape_direction.x * move_speed * 0.72
-        velocity.z = escape_direction.z * move_speed * 0.72
+        velocity.x = escape_direction.x * move_speed * 0.76
+        velocity.z = escape_direction.z * move_speed * 0.76
     else:
-        var target_is_crown_holder: bool = target.get_meta("crown_holder", false)
-        direction = _apply_separation(direction)
-
-        if target_is_crown_holder:
-            velocity.x = direction.x * move_speed * 0.78
-            velocity.z = direction.z * move_speed * 0.78
-        else:
-            velocity.x = -direction.x * move_speed * 0.78
-            velocity.z = -direction.z * move_speed * 0.78
+        velocity.x = direction.x * move_speed * 0.84
+        velocity.z = direction.z * move_speed * 0.84
 
     velocity.y = 0.0
 
@@ -109,14 +101,14 @@ func _apply_separation(direction: Vector3) -> Vector3:
         offset.y = 0.0
         var distance := offset.length()
 
-        if distance > 0.01 and distance < 3.0:
-            var strength := (3.0 - distance) / 3.0
+        if distance > 0.01 and distance < 2.8:
+            var strength := (2.8 - distance) / 2.8
             separation += offset.normalized() * strength
 
-    if separation.length_squared() <= 0.01:
+    if separation.length_squared() <= 0.0001:
         return direction
 
-    return (direction + separation * 2.5).normalized()
+    return (direction + separation * 3.2).normalized()
 
 func set_target(new_target: Node3D) -> void:
     target = new_target
