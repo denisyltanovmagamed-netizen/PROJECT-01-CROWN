@@ -71,7 +71,13 @@ func _handle_dummy_ai() -> void:
             velocity = Vector3.ZERO
             return
 
-    direction = _apply_separation(direction.normalized())
+    var distance_to_target := direction.length()
+    direction = direction.normalized()
+
+    # Near the target, prioritize reaching the steal distance over separation.
+    # Otherwise separation can push attackers away forever before they get close enough to steal.
+    if distance_to_target > 1.8:
+        direction = _apply_separation(direction)
 
     if get_meta("crown_holder", false):
         var distance_from_center := Vector2(global_position.x, global_position.z).length()
@@ -81,7 +87,8 @@ func _handle_dummy_ai() -> void:
             var center_direction := Vector3(-global_position.x, 0.0, -global_position.z).normalized()
             escape_direction = (escape_direction * 0.65 + center_direction * 0.9).normalized()
 
-        escape_direction = _apply_separation(escape_direction)
+        if distance_to_target > 1.8:
+            escape_direction = _apply_separation(escape_direction)
         velocity.x = escape_direction.x * move_speed * 0.76
         velocity.z = escape_direction.z * move_speed * 0.76
     else:
