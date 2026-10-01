@@ -1,23 +1,76 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
-radius = 0.45
-height = 1.8
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.38
+height = 1.0
+radial_segments = 10
+rings = 4
+
+[sub_resource type="SphereMesh" id="SphereMesh_head"]
+radius = 0.42
+height = 0.84
+radial_segments = 12
+rings = 6
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_limb"]
+top_radius = 0.12
+bottom_radius = 0.14
+height = 0.75
+radial_segments = 8
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
-radius = 0.45
+radius = 0.42
 height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="BodyMaterial"]
+roughness = 0.75
+
+[sub_resource type="StandardMaterial3D" id="DarkMaterial"]
+albedo_color = Color(0.08, 0.08, 0.08, 1)
+roughness = 0.85
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_player")
 
-[node name="Body" type="MeshInstance3D" parent="."]
-mesh = SubResource("CapsuleMesh_player")
+[node name="CharacterVisual" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="CharacterVisual"]
+position = Vector3(0, 0.95, 0)
+mesh = SubResource("CapsuleMesh_body")
+material_override = SubResource("BodyMaterial")
+
+[node name="Head" type="MeshInstance3D" parent="CharacterVisual"]
+position = Vector3(0, 1.68, 0)
+mesh = SubResource("SphereMesh_head")
+material_override = SubResource("BodyMaterial")
+
+[node name="ArmL" type="MeshInstance3D" parent="CharacterVisual"]
+position = Vector3(-0.5, 0.92, 0)
+rotation = Vector3(0, 0, 0.12)
+mesh = SubResource("CylinderMesh_limb")
+material_override = SubResource("BodyMaterial")
+
+[node name="ArmR" type="MeshInstance3D" parent="CharacterVisual"]
+position = Vector3(0.5, 0.92, 0)
+rotation = Vector3(0, 0, -0.12)
+mesh = SubResource("CylinderMesh_limb")
+material_override = SubResource("BodyMaterial")
+
+[node name="LegL" type="MeshInstance3D" parent="CharacterVisual"]
+position = Vector3(-0.2, 0.38, 0)
+mesh = SubResource("CylinderMesh_limb")
+material_override = SubResource("DarkMaterial")
+
+[node name="LegR" type="MeshInstance3D" parent="CharacterVisual"]
+position = Vector3(0.2, 0.38, 0)
+mesh = SubResource("CylinderMesh_limb")
+material_override = SubResource("DarkMaterial")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.9, 0)
 shape = SubResource("CapsuleShape_player")
 
 [node name="Marker" type="Marker3D" parent="."]
-position = Vector3(0, 1.4, 0)
+position = Vector3(0, 2.1, 0)
