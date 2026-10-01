@@ -4,8 +4,9 @@ const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const CROWN_SCENE := preload("res://scenes/crown/Crown.tscn")
 const GAME_MANAGER_SCRIPT := preload("res://scripts/game/game_manager.gd")
 
-const ARENA_LIMIT := 15.0
+const ARENA_LIMIT := 17.0
 const PLAYER_COUNT := 8
+const SPAWN_RADIUS := 14.0
 
 var local_player: CharacterBody3D
 var players: Array[CharacterBody3D] = []
@@ -22,7 +23,7 @@ func _process(_delta: float) -> void:
     if local_player == null or camera == null:
         return
 
-    camera.global_position = local_player.global_position + Vector3(0, 18, 18)
+    camera.global_position = local_player.global_position + Vector3(0, 19, 19)
     camera.look_at(
         local_player.global_position + Vector3(0, 0.5, 0),
         Vector3.UP
@@ -30,9 +31,10 @@ func _process(_delta: float) -> void:
 
 func _spawn_gameplay() -> void:
     var spawn_positions: Array[Vector3] = []
+
     for index in range(PLAYER_COUNT):
         var angle := (TAU / float(PLAYER_COUNT)) * float(index) + PI * 0.125
-        spawn_positions.append(Vector3(cos(angle), 0.0, sin(angle)) * 12.0)
+        spawn_positions.append(Vector3(cos(angle), 0.0, sin(angle)) * SPAWN_RADIUS)
 
     var player_colors: Array[Color] = [
         Color(0.2, 0.55, 1.0),
@@ -72,7 +74,7 @@ func _spawn_gameplay() -> void:
 func _create_arena_floor() -> void:
     var floor := CSGBox3D.new()
     floor.name = "ArenaFloor"
-    floor.size = Vector3(32.0, 0.4, 32.0)
+    floor.size = Vector3(36.0, 0.4, 36.0)
     floor.position = Vector3(0.0, -0.2, 0.0)
     add_child(floor)
 
@@ -113,17 +115,17 @@ func _apply_player_material(player: Node3D, color: Color) -> void:
             child.material_override = material
 
 func _create_obstacles() -> void:
-    # Deliberately leaves a clear central arena around the crown.
-    _create_obstacle(Vector3(0.0, 1.0, -6.0), Vector3(7.0, 2.0, 1.0))
-    _create_obstacle(Vector3(6.0, 1.0, 0.0), Vector3(1.0, 2.0, 7.0))
-    _create_obstacle(Vector3(0.0, 1.0, 6.0), Vector3(7.0, 2.0, 1.0))
-    _create_obstacle(Vector3(-6.0, 1.0, 0.0), Vector3(1.0, 2.0, 7.0))
+    # Four offset bars form a readable central ring with open diagonal exits.
+    _create_obstacle(Vector3(0.0, 1.0, -6.5), Vector3(8.0, 2.0, 1.0))
+    _create_obstacle(Vector3(6.5, 1.0, 0.0), Vector3(1.0, 2.0, 8.0))
+    _create_obstacle(Vector3(0.0, 1.0, 6.5), Vector3(8.0, 2.0, 1.0))
+    _create_obstacle(Vector3(-6.5, 1.0, 0.0), Vector3(1.0, 2.0, 8.0))
 
-    # Four offset blocks create alternative routes and turning points.
-    _create_obstacle(Vector3(-9.0, 1.0, -8.0), Vector3(3.0, 2.0, 2.0))
-    _create_obstacle(Vector3(9.0, 1.0, -8.0), Vector3(3.0, 2.0, 2.0))
-    _create_obstacle(Vector3(9.0, 1.0, 8.0), Vector3(3.0, 2.0, 2.0))
-    _create_obstacle(Vector3(-9.0, 1.0, 8.0), Vector3(3.0, 2.0, 2.0))
+    # Corner blocks create turning points without creating dead-end corridors.
+    _create_obstacle(Vector3(-11.0, 1.0, -11.0), Vector3(2.5, 2.0, 2.5))
+    _create_obstacle(Vector3(11.0, 1.0, -11.0), Vector3(2.5, 2.0, 2.5))
+    _create_obstacle(Vector3(11.0, 1.0, 11.0), Vector3(2.5, 2.0, 2.5))
+    _create_obstacle(Vector3(-11.0, 1.0, 11.0), Vector3(2.5, 2.0, 2.5))
 
 func _create_obstacle(pos: Vector3, size: Vector3) -> void:
     var body := StaticBody3D.new()
@@ -136,6 +138,7 @@ func _create_obstacle(pos: Vector3, size: Vector3) -> void:
     var box := BoxMesh.new()
     box.size = size
     mesh.mesh = box
+
     var material := StandardMaterial3D.new()
     material.albedo_color = Color(0.18, 0.2, 0.23)
     material.roughness = 0.8
