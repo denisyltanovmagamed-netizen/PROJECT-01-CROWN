@@ -2,7 +2,7 @@ extends Node
 
 const ROUND_TIME: float = 180.0
 const CLAIM_DISTANCE: float = 2.0
-const STEAL_DISTANCE: float = 1.8
+const STEAL_DISTANCE: float = 1.15
 const STEAL_COOLDOWN: float = 1.5
 const COUNTDOWN_TIME: float = 3.0
 
@@ -22,6 +22,7 @@ var timer_label: Label
 var owner_label: Label
 var score_label: Label
 var status_label: Label
+var interaction_label: Label
 var claim_request: bool = false
 
 func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
@@ -38,6 +39,7 @@ func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
     crown.global_position = crown_start_position
 
     _update_ui()
+    _update_interaction_ui()
     status_label.text = "3"
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -75,6 +77,7 @@ func _process(delta: float) -> void:
 
     _update_ai_targets()
     _update_ui()
+    _update_interaction_ui()
 
     if round_time <= 0.0:
         _finish_round()
@@ -229,3 +232,34 @@ func create_ui(parent: Node) -> void:
     status_label.position = Vector2(24, 180)
     status_label.add_theme_font_size_override("font_size", 42)
     layer.add_child(status_label)
+
+    interaction_label = Label.new()
+    interaction_label.position = Vector2(24, 245)
+    interaction_label.add_theme_font_size_override("font_size", 20)
+    layer.add_child(interaction_label)
+
+func _update_interaction_ui() -> void:
+    if interaction_label == null or not round_started or round_finished:
+        return
+
+    var local_player := _get_local_player()
+    if local_player == null:
+        interaction_label.text = ""
+        return
+
+    if crown_holder == null:
+        if _horizontal_distance(local_player.global_position, crown_start_position) <= CLAIM_DISTANCE:
+            interaction_label.text = "ПКМ — ЗАБРАТЬ КОРОНУ"
+        else:
+            interaction_label.text = ""
+    elif crown_holder != local_player:
+        if _horizontal_distance(local_player.global_position, crown_holder.global_position) <= STEAL_DISTANCE:
+            interaction_label.text = "ПКМ — УКРАСТЬ КОРОНУ"
+        else:
+            interaction_label.text = ""
+
+func _get_local_player() -> CharacterBody3D:
+    for player in players:
+        if player.is_local_player:
+            return player
+    return null
