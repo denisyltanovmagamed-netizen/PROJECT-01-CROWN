@@ -3,7 +3,7 @@ extends Node
 const ROUND_TIME: float = 180.0
 const CLAIM_DISTANCE: float = 2.0
 const STEAL_DISTANCE: float = 1.8
-const STEAL_COOLDOWN: float = 0.75
+const STEAL_COOLDOWN: float = 1.5
 const COUNTDOWN_TIME: float = 3.0
 
 var round_time: float = ROUND_TIME
@@ -41,7 +41,7 @@ func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
     status_label.text = "3"
 
 func _unhandled_input(event: InputEvent) -> void:
-    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+    if event is InputEventMouseButton and event.pressed and not event.canceled and event.button_index == MOUSE_BUTTON_RIGHT:
         claim_request = true
 
 func _process(delta: float) -> void:
@@ -131,6 +131,7 @@ func _set_crown_holder(player: CharacterBody3D) -> void:
 
     crown_holder = player
     crown_holder.set_meta("crown_holder", true)
+    steal_cooldown = STEAL_COOLDOWN
 
 func _update_crown() -> void:
     if crown == null or crown_holder == null:
