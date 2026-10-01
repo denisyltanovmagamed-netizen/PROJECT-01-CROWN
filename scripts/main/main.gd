@@ -4,12 +4,16 @@ const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const CROWN_SCENE := preload("res://scenes/crown/Crown.tscn")
 const GAME_MANAGER_SCRIPT := preload("res://scripts/game/game_manager.gd")
 
+const ARENA_LIMIT := 15.0
+const PLAYER_COUNT := 8
+
 var local_player: CharacterBody3D
 var players: Array[CharacterBody3D] = []
 var camera: Camera3D
 
 func _ready() -> void:
     camera = $Camera
+    _create_arena_floor()
     _create_pedestal()
     _create_obstacles()
     _spawn_gameplay()
@@ -18,28 +22,30 @@ func _process(_delta: float) -> void:
     if local_player == null or camera == null:
         return
 
-    camera.global_position = local_player.global_position + Vector3(0, 11, 11)
+    camera.global_position = local_player.global_position + Vector3(0, 18, 18)
     camera.look_at(
         local_player.global_position + Vector3(0, 0.5, 0),
         Vector3.UP
     )
 
 func _spawn_gameplay() -> void:
-    var spawn_positions: Array[Vector3] = [
-        Vector3(-4.5, 0.0, 0.0),
-        Vector3(4.5, 0.0, 0.0),
-        Vector3(0.0, 0.0, -4.5),
-        Vector3(0.0, 0.0, 4.5)
-    ]
+    var spawn_positions: Array[Vector3] = []
+    for index in range(PLAYER_COUNT):
+        var angle := (TAU / float(PLAYER_COUNT)) * float(index) + PI * 0.125
+        spawn_positions.append(Vector3(cos(angle), 0.0, sin(angle)) * 12.0)
 
     var player_colors: Array[Color] = [
         Color(0.2, 0.55, 1.0),
         Color(1.0, 0.3, 0.3),
         Color(0.3, 0.85, 0.35),
-        Color(1.0, 0.8, 0.15)
+        Color(1.0, 0.8, 0.15),
+        Color(0.75, 0.35, 1.0),
+        Color(0.1, 0.85, 0.85),
+        Color(1.0, 0.5, 0.15),
+        Color(0.9, 0.35, 0.7)
     ]
 
-    for index in range(spawn_positions.size()):
+    for index in range(PLAYER_COUNT):
         var player: CharacterBody3D = PLAYER_SCENE.instantiate()
         player.name = "Player_%d" % (index + 1)
         player.is_local_player = index == 0
@@ -61,8 +67,19 @@ func _spawn_gameplay() -> void:
     game_manager.set_script(GAME_MANAGER_SCRIPT)
     add_child(game_manager)
     game_manager.create_ui(self)
-
     game_manager.setup(players, crown)
+
+func _create_arena_floor() -> void:
+    var floor := CSGBox3D.new()
+    floor.name = "ArenaFloor"
+    floor.size = Vector3(32.0, 0.4, 32.0)
+    floor.position = Vector3(0.0, -0.2, 0.0)
+    add_child(floor)
+
+    var material := StandardMaterial3D.new()
+    material.albedo_color = Color(0.10, 0.11, 0.13)
+    material.roughness = 0.9
+    floor.material = material
 
 func _create_pedestal() -> void:
     var pedestal := CSGCylinder3D.new()
@@ -95,12 +112,18 @@ func _apply_player_material(player: Node3D, color: Color) -> void:
         if child is MeshInstance3D:
             child.material_override = material
 
-
 func _create_obstacles() -> void:
-    _create_obstacle(Vector3(0.0, 0.75, -4.0), Vector3(3.0, 1.5, 0.8))
-    _create_obstacle(Vector3(4.0, 0.75, 0.0), Vector3(0.8, 1.5, 3.0))
-    _create_obstacle(Vector3(0.0, 0.75, 4.0), Vector3(3.0, 1.5, 0.8))
-    _create_obstacle(Vector3(-4.0, 0.75, 0.0), Vector3(0.8, 1.5, 3.0))
+    # Deliberately leaves a clear central arena around the crown.
+    _create_obstacle(Vector3(0.0, 1.0, -6.0), Vector3(7.0, 2.0, 1.0))
+    _create_obstacle(Vector3(6.0, 1.0, 0.0), Vector3(1.0, 2.0, 7.0))
+    _create_obstacle(Vector3(0.0, 1.0, 6.0), Vector3(7.0, 2.0, 1.0))
+    _create_obstacle(Vector3(-6.0, 1.0, 0.0), Vector3(1.0, 2.0, 7.0))
+
+    # Four offset blocks create alternative routes and turning points.
+    _create_obstacle(Vector3(-9.0, 1.0, -8.0), Vector3(3.0, 2.0, 2.0))
+    _create_obstacle(Vector3(9.0, 1.0, -8.0), Vector3(3.0, 2.0, 2.0))
+    _create_obstacle(Vector3(9.0, 1.0, 8.0), Vector3(3.0, 2.0, 2.0))
+    _create_obstacle(Vector3(-9.0, 1.0, 8.0), Vector3(3.0, 2.0, 2.0))
 
 func _create_obstacle(pos: Vector3, size: Vector3) -> void:
     var body := StaticBody3D.new()
