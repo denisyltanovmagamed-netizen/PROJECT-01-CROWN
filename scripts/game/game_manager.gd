@@ -174,14 +174,27 @@ func _update_ai_targets() -> void:
         if player.is_dummy and player != crown_holder:
             attackers.append(player)
 
-    # Attackers approach the holder directly. A small lateral offset is kept
-    # only to reduce visual overlap; once close, player.gd stops separation
-    # from overriding the approach so the AI can actually enter steal range.
-    for player in attackers:
-        var lane_angle := (TAU / maxf(1.0, float(attackers.size()))) * float(attackers.find(player))
-        var lane_direction := Vector3(cos(lane_angle), 0.0, sin(lane_angle))
-        var attack_point := crown_holder.global_position + lane_direction * ATTACK_LANE_RADIUS
-        player.set_target_point(crown_holder, attack_point)
+    # AI chooses different jobs instead of following the same point.
+    # One attacker closes directly; the others predict where the holder will
+    # be and intercept from different sides.
+    var holder_velocity := crown_holder.velocity
+    holder_velocity.y = 0.0
+    var predicted_time := 0.75
+    var predicted_position := crown_holder.global_position + holder_velocity * predicted_time
+    predicted_position.x = clampf(predicted_position.x, -7.5, 7.5)
+    predicted_position.z = clampf(predicted_position.z, -7.5, 7.5)
+
+    for index in range(attackers.size()):
+        var player := attackers[index]
+        if index == 0:
+            player.set_target(crown_holder)
+        else:
+            var side_angle := (TAU / maxf(1.0, float(attackers.size() - 1))) * float(index - 1)
+            var side := Vector3(cos(side_angle), 0.0, sin(side_angle))
+            var intercept_point := predicted_position + side * ATTACK_LANE_RADIUS
+            intercept_point.x = clampf(intercept_point.x, -8.0, 8.0)
+            intercept_point.z = clampf(intercept_point.z, -8.0, 8.0)
+            player.set_target_point(crown_holder, intercept_point)
 
     # The crown holder runs away from the nearest opponent.
     if crown_holder.is_dummy:
