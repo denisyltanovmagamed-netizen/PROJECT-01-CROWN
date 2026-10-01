@@ -109,7 +109,7 @@ func _avoid_obstacles(direction: Vector3) -> Vector3:
     var blocked := false
 
     for offset in [0.0, 0.65, -0.65]:
-        var ray_direction := (forward + right * offset).normalized()
+        var ray_direction: Vector3 = (forward + right * offset).normalized()
         var query := PhysicsRayQueryParameters3D.create(origin, origin + ray_direction * 1.8)
         query.collision_mask = 1
         var hit := space.intersect_ray(query)
