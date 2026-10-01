@@ -22,6 +22,7 @@ var timer_label: Label
 var owner_label: Label
 var score_label: Label
 var status_label: Label
+var claim_request: bool = false
 
 func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
     players = new_players
@@ -38,6 +39,10 @@ func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
 
     _update_ui()
     status_label.text = "3"
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+        claim_request = true
 
 func _process(delta: float) -> void:
     if round_finished:
@@ -75,7 +80,8 @@ func _process(delta: float) -> void:
         _finish_round()
 
 func _check_claim_input() -> void:
-    if Input.is_key_pressed(KEY_E):
+    if claim_request:
+        claim_request = false
         for player in players:
             if player.is_local_player and _horizontal_distance(player.global_position, crown_start_position) <= CLAIM_DISTANCE:
                 _set_crown_holder(player)
@@ -94,7 +100,8 @@ func _check_steal() -> void:
     if steal_cooldown > 0.0:
         return
 
-    if Input.is_key_pressed(KEY_E):
+    if claim_request:
+        claim_request = false
         for player in players:
             if player == crown_holder or not player.is_local_player:
                 continue
