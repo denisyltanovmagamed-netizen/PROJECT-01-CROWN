@@ -170,7 +170,7 @@ func _can_steal(attacker: CharacterBody3D, holder: CharacterBody3D) -> bool:
         return false
 
     to_attacker = to_attacker.normalized()
-    var facing := holder.facing_direction
+    var facing: Vector3 = holder.facing_direction
     facing.y = 0.0
     if facing.length_squared() <= 0.001:
         facing = Vector3.FORWARD
