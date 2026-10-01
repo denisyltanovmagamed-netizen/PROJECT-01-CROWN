@@ -6,8 +6,11 @@ extends CharacterBody3D
 
 var target: Node3D
 var ai_target_is_crown: bool = false
+var ai_target_point: Vector3
+var ai_use_target_point: bool = false
 var movement_enabled: bool = false
 var arena_limit: float = 9.0
+var all_players: Array[CharacterBody3D] = []
 
 func _physics_process(_delta: float) -> void:
     if not movement_enabled:
@@ -51,7 +54,11 @@ func _handle_dummy_ai() -> void:
         velocity = Vector3.ZERO
         return
 
-    var direction: Vector3 = target.global_position - global_position
+    var target_position := target.global_position
+    if ai_use_target_point:
+        target_position = ai_target_point
+
+    var direction: Vector3 = target_position - global_position
     direction.y = 0.0
 
     if direction.length_squared() <= 0.01:
@@ -61,26 +68,26 @@ func _handle_dummy_ai() -> void:
     direction = direction.normalized()
 
     if ai_target_is_crown:
+        direction = _apply_separation(direction)
         velocity.x = direction.x * move_speed * 0.78
         velocity.z = direction.z * move_speed * 0.78
     elif get_meta("crown_holder", false):
         var distance_from_center := Vector2(global_position.x, global_position.z).length()
         var escape_direction: Vector3
 
-        # Inside the safe area, run directly away from the opponent.
-        # This prevents the holder from steering back into the central pedestal.
         if distance_from_center < 6.0:
             escape_direction = -direction
         else:
-            # Near the arena edge, keep moving away from the opponent while
-            # steering back toward the center.
             var center_direction := Vector3(-global_position.x, 0.0, -global_position.z).normalized()
             escape_direction = (-direction * 0.8 + center_direction * 0.6).normalized()
 
+        escape_direction = _apply_separation(escape_direction)
         velocity.x = escape_direction.x * move_speed * 0.72
         velocity.z = escape_direction.z * move_speed * 0.72
     else:
         var target_is_crown_holder: bool = target.get_meta("crown_holder", false)
+        direction = _apply_separation(direction)
+
         if target_is_crown_holder:
             velocity.x = direction.x * move_speed * 0.78
             velocity.z = direction.z * move_speed * 0.78
@@ -90,13 +97,44 @@ func _handle_dummy_ai() -> void:
 
     velocity.y = 0.0
 
+func _apply_separation(direction: Vector3) -> Vector3:
+    var separation := Vector3.ZERO
+
+    for other in all_players:
+        if other == self:
+            continue
+
+        var offset: Vector3 = global_position - other.global_position
+        offset.y = 0.0
+        var distance := offset.length()
+
+        if distance > 0.01 and distance < 2.2:
+            var strength := (2.2 - distance) / 2.2
+            separation += offset.normalized() * strength
+
+    if separation.length_squared() <= 0.01:
+        return direction
+
+    return (direction + separation * 1.4).normalized()
+
 func set_target(new_target: Node3D) -> void:
     target = new_target
     ai_target_is_crown = false
+    ai_use_target_point = false
 
 func set_crown_target(new_target: Node3D) -> void:
     target = new_target
     ai_target_is_crown = true
+    ai_use_target_point = false
+
+func set_target_point(new_target: Node3D, point: Vector3) -> void:
+    target = new_target
+    ai_target_is_crown = false
+    ai_target_point = point
+    ai_use_target_point = true
+
+func set_ai_context(new_players: Array[CharacterBody3D]) -> void:
+    all_players = new_players
 
 func set_movement_enabled(enabled: bool) -> void:
     movement_enabled = enabled
