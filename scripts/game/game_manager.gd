@@ -5,7 +5,7 @@ const CLAIM_DISTANCE: float = 2.0
 const STEAL_DISTANCE: float = 1.15
 const STEAL_COOLDOWN: float = 0.12
 const COUNTDOWN_TIME: float = 3.0
-const ATTACK_LANE_RADIUS: float = 0.72
+const ATTACK_LANE_RADIUS: float = 0.35
 
 var round_time: float = ROUND_TIME
 var countdown_time: float = COUNTDOWN_TIME
@@ -106,9 +106,6 @@ func _check_claim_input() -> void:
             return
 
 func _check_steal() -> void:
-    if steal_cooldown > 0.0:
-        return
-
     if claim_request:
         claim_request = false
         for player in players:
@@ -119,8 +116,8 @@ func _check_steal() -> void:
                 status_label.text = "%s украл корону!" % player.name
                 return
 
-    # Check the closest AI first. This makes the closest attacker steal
-    # immediately instead of depending on array order.
+    # Stealing is checked every frame with no global cooldown.
+    # The closest AI inside the steal radius takes the crown immediately.
     var closest_ai: CharacterBody3D = null
     var closest_distance := INF
 
@@ -148,7 +145,6 @@ func _set_crown_holder(player: CharacterBody3D) -> void:
 
     crown_holder = player
     crown_holder.set_meta("crown_holder", true)
-    steal_cooldown = STEAL_COOLDOWN
 
 func _update_crown() -> void:
     if crown == null or crown_holder == null:
@@ -178,8 +174,9 @@ func _update_ai_targets() -> void:
         if player.is_dummy and player != crown_holder:
             attackers.append(player)
 
-    # The AI are assigned fixed attack lanes around the crown holder.
-    # They approach from different sides instead of forming one pile.
+    # Attackers approach the holder directly. A small lateral offset is kept
+    # only to reduce visual overlap; once close, player.gd stops separation
+    # from overriding the approach so the AI can actually enter steal range.
     for player in attackers:
         var lane_angle := (TAU / maxf(1.0, float(attackers.size()))) * float(attackers.find(player))
         var lane_direction := Vector3(cos(lane_angle), 0.0, sin(lane_angle))
