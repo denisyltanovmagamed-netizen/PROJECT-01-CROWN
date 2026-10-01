@@ -2,12 +2,12 @@ extends Node
 
 const ROUND_TIME: float = 180.0
 const CLAIM_DISTANCE: float = 1.65
-const STEAL_DISTANCE: float = 1.40
-const STEAL_COOLDOWN: float = 0.70
+const STEAL_DISTANCE: float = 1.70
+const STEAL_COOLDOWN: float = 0.90
 const COUNTDOWN_TIME: float = 3.0
 const ARENA_LIMIT: float = 15.0
 const PREDICTION_TIME: float = 0.80
-const STEAL_FRONT_DOT: float = 0.55
+const STEAL_FRONT_DOT: float = 0.75
 
 var round_time: float = ROUND_TIME
 var countdown_time: float = COUNTDOWN_TIME
@@ -132,14 +132,15 @@ func _check_steal() -> void:
         claim_request = false
         return
 
-    if claim_request:
+    var local_player := _get_local_player()
+    if local_player != null and local_player != crown_holder and _can_steal(local_player, crown_holder):
         claim_request = false
-        var local_player := _get_local_player()
-        if local_player != null and local_player != crown_holder and _can_steal(local_player, crown_holder):
-            _set_crown_holder(local_player)
-            steal_cooldown = STEAL_COOLDOWN
-            status_label.text = "ТЫ УКРАЛ КОРОНУ"
-            return
+        _set_crown_holder(local_player)
+        steal_cooldown = STEAL_COOLDOWN
+        status_label.text = "ТЫ УКРАЛ КОРОНУ"
+        return
+
+    claim_request = false
 
     var best_attacker: CharacterBody3D = null
     var best_score := INF
@@ -220,35 +221,35 @@ func _update_ai_targets() -> void:
     for index in range(attackers.size()):
         var player := attackers[index]
 
-        if index % 4 == 0:
-            # Direct pressure: forces the holder to react.
+        if index % 5 == 0 or index % 5 == 1:
+            # Only two bots apply direct pressure. The others attack space around the holder.
             player.set_target(crown_holder)
             player.set_ai_state("CHASE")
-        elif index % 4 == 1:
-            # Cut the route in front of the holder.
+        elif index % 5 == 2:
+            # Interceptor aims several meters ahead, not at the holder's current position.
             var forward := holder_velocity.normalized()
             if forward.length_squared() <= 0.01:
                 forward = (crown_holder.global_position - player.global_position).normalized()
-            var point := predicted_position + forward * 1.2
+            var point := predicted_position + forward * 4.5
             player.set_target_point(crown_holder, _clamp_arena_point(point))
             player.set_ai_state("INTERCEPT")
-        elif index % 4 == 2:
-            # Attack from a side, making a straight chase less likely.
+        elif index % 5 == 3:
+            # Flanker attacks a wide side lane and arrives from an angle.
             var lateral := Vector3(-holder_velocity.z, 0.0, holder_velocity.x).normalized()
             if lateral.length_squared() <= 0.01:
                 lateral = Vector3(1.0, 0.0, 0.0)
             lateral *= -1.0 if player.ai_slot % 2 == 0 else 1.0
-            var point := predicted_position + lateral * 1.15
+            var point := predicted_position + lateral * 4.0
             player.set_target_point(crown_holder, _clamp_arena_point(point))
             player.set_ai_state("FLANK")
         else:
-            # A second interception lane keeps several bots from collapsing onto one point.
+            # Rear interceptor targets the space behind the holder's route.
             var radial := (player.global_position - crown_holder.global_position)
             radial.y = 0.0
             if radial.length_squared() <= 0.01:
                 radial = Vector3(1.0, 0.0, 0.0)
             radial = radial.normalized()
-            var point := predicted_position + radial * 1.0
+            var point := predicted_position + radial * 3.5
             player.set_target_point(crown_holder, _clamp_arena_point(point))
             player.set_ai_state("INTERCEPT")
 
