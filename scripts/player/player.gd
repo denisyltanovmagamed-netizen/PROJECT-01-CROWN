@@ -70,7 +70,7 @@ func _handle_dummy_ai() -> void:
         else:
             center_direction = Vector3.ZERO
 
-        var escape_direction := (-direction * 0.72 + center_direction * 0.65).normalized()
+        var escape_direction := (-direction * 0.35 + center_direction * 1.0).normalized()
         velocity.x = escape_direction.x * move_speed * 0.72
         velocity.z = escape_direction.z * move_speed * 0.72
     else:
