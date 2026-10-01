@@ -3,11 +3,11 @@ extends CharacterBody3D
 @export var move_speed: float = 7.0
 @export var acceleration: float = 25.0
 @export var braking: float = 30.0
+@export var turn_speed: float = 14.0
 @export var is_local_player: bool = false
 @export var is_dummy: bool = false
 
 var target: Node3D
-var ai_target_is_crown: bool = false
 var ai_target_point: Vector3
 var ai_use_target_point: bool = false
 var movement_enabled: bool = false
@@ -15,8 +15,10 @@ var arena_limit: float = 15.0
 var all_players: Array[CharacterBody3D] = []
 var ai_slot: int = 0
 var ai_state: String = "CHASE"
-var ai_intercept_point: Vector3
-var ai_use_intercept: bool = false
+var ai_bias: float = 0.0
+
+var facing_direction: Vector3 = Vector3.FORWARD
+var ai_stop_distance: float = 0.0
 
 func _physics_process(delta: float) -> void:
     if not movement_enabled:
@@ -34,6 +36,8 @@ func _physics_process(delta: float) -> void:
     move_and_slide()
     global_position.x = clampf(global_position.x, -arena_limit, arena_limit)
     global_position.z = clampf(global_position.z, -arena_limit, arena_limit)
+
+    _update_facing(delta)
 
 func _handle_local_input(delta: float) -> void:
     var input_vec: Vector2 = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
@@ -57,115 +61,129 @@ func _handle_local_input(delta: float) -> void:
     velocity.z = move_toward(velocity.z, target_velocity.z, rate * delta)
     velocity.y = 0.0
 
-func _handle_dummy_ai(_delta: float) -> void:
-    if target == null:
-        velocity = Vector3.ZERO
+func _handle_dummy_ai(delta: float) -> void:
+    var desired := Vector3.ZERO
+
+    if ai_use_target_point:
+        desired = ai_target_point - global_position
+    elif target != null:
+        desired = target.global_position - global_position
+
+    desired.y = 0.0
+
+    if desired.length_squared() <= 0.04:
+        velocity.x = move_toward(velocity.x, 0.0, braking * delta)
+        velocity.z = move_toward(velocity.z, 0.0, braking * delta)
+        velocity.y = 0.0
         return
 
-    var target_position := target.global_position
-    if ai_use_target_point:
-        target_position = ai_target_point
+    desired = desired.normalized()
+    desired = _choose_clear_direction(desired)
 
-    var direction: Vector3 = target_position - global_position
-    direction.y = 0.0
+    var target_velocity := desired * move_speed
+    if ai_state == "HOLDER_ESCAPE":
+        target_velocity *= 1.0
 
-    if direction.length_squared() <= 0.0001:
-        if ai_use_target_point:
-            direction = target.global_position - global_position
-            direction.y = 0.0
-        if direction.length_squared() <= 0.0001:
-            velocity = Vector3.ZERO
-            return
-
-    direction = direction.normalized()
-
-    if not get_meta("crown_holder", false):
-        direction = _avoid_obstacles(_apply_separation(direction))
-    else:
-        direction = _apply_separation(direction)
-
-    var target_velocity := direction * move_speed
-    if get_meta("crown_holder", false):
-        target_velocity *= 0.92
-
-    velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * _delta)
-    velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * _delta)
+    velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
+    velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * delta)
     velocity.y = 0.0
 
-func _avoid_obstacles(direction: Vector3) -> Vector3:
+func _choose_clear_direction(desired: Vector3) -> Vector3:
+    var candidates: Array[Vector3] = [desired]
+
+    for degrees in [-60.0, -35.0, -18.0, 18.0, 35.0, 60.0, 90.0, -90.0]:
+        var angle := deg_to_rad(degrees)
+        candidates.append(desired.rotated(Vector3.UP, angle).normalized())
+
+    var best_direction := desired
+    var best_score := -INF
+
+    for candidate in candidates:
+        var clearance := _ray_clearance(candidate)
+        var alignment := candidate.dot(desired)
+        var separation := _separation_score(candidate)
+        var score := alignment * 2.4 + clearance * 1.5 + separation * 0.8
+
+        if score > best_score:
+            best_score = score
+            best_direction = candidate
+
+    return best_direction.normalized()
+
+func _ray_clearance(direction: Vector3) -> float:
     var space := get_world_3d().direct_space_state
     var origin := global_position + Vector3.UP * 0.65
-    var forward := direction.normalized()
-    var right := Vector3(-forward.z, 0.0, forward.x)
-    var best := direction
-    var blocked := false
+    var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * 2.4)
+    query.collision_mask = 1
+    query.exclude = [self]
 
-    for offset in [0.0, 0.65, -0.65]:
-        var ray_direction: Vector3 = (forward + right * offset).normalized()
-        var query := PhysicsRayQueryParameters3D.create(origin, origin + ray_direction * 2.2)
-        query.collision_mask = 1
-        var hit := space.intersect_ray(query)
-        if not hit.is_empty():
-            blocked = true
-            var normal: Vector3 = hit.normal
-            normal.y = 0.0
-            if normal.length_squared() > 0.001:
-                best += normal.normalized() * 1.8
+    var hit := space.intersect_ray(query)
+    if hit.is_empty():
+        return 1.0
 
-    if blocked:
-        var side := 1.0 if ai_slot % 2 == 0 else -1.0
-        best += right * side * 0.9
-        best.y = 0.0
-        return best.normalized()
+    var distance: float = origin.distance_to(hit.position)
+    return clampf(distance / 2.4, 0.0, 1.0)
 
-    return direction
-
-func _apply_separation(direction: Vector3) -> Vector3:
-    var separation := Vector3.ZERO
+func _separation_score(direction: Vector3) -> float:
+    var score := 1.0
 
     for other in all_players:
         if other == self:
             continue
 
-        var offset: Vector3 = global_position - other.global_position
+        var offset := other.global_position - global_position
         offset.y = 0.0
         var distance := offset.length()
 
-        if distance > 0.01 and distance < 2.0:
-            var strength := (2.0 - distance) / 2.0
-            separation += offset.normalized() * strength
+        if distance <= 0.05 or distance >= 2.2:
+            continue
 
-    if separation.length_squared() <= 0.0001:
-        return direction
+        var toward_other := direction.dot(offset.normalized())
+        var danger := (2.2 - distance) / 2.2
 
-    return (direction + separation * 2.0).normalized()
+        if toward_other > 0.15:
+            score -= danger * toward_other
+
+    return clampf(score, 0.0, 1.0)
+
+func _update_facing(delta: float) -> void:
+    var flat_velocity := Vector3(velocity.x, 0.0, velocity.z)
+
+    if flat_velocity.length_squared() <= 0.04:
+        return
+
+    var desired := flat_velocity.normalized()
+    facing_direction = facing_direction.slerp(desired, clampf(turn_speed * delta, 0.0, 1.0)).normalized()
+
+    var visual := get_node_or_null("CharacterVisual")
+    if visual != null:
+        visual.rotation.y = atan2(facing_direction.x, facing_direction.z)
 
 func set_target(new_target: Node3D) -> void:
     target = new_target
-    ai_target_is_crown = false
     ai_use_target_point = false
     ai_state = "CHASE"
-    ai_use_intercept = false
 
 func set_crown_target(new_target: Node3D) -> void:
     target = new_target
-    ai_target_is_crown = true
     ai_use_target_point = false
+    ai_state = "CROWN_APPROACH"
 
 func set_target_point(new_target: Node3D, point: Vector3) -> void:
     target = new_target
-    ai_target_is_crown = false
     ai_target_point = point
-    ai_intercept_point = point
     ai_use_target_point = true
-    ai_use_intercept = true
     ai_state = "INTERCEPT"
+
+func set_ai_state(new_state: String) -> void:
+    ai_state = new_state
 
 func set_ai_context(new_players: Array[CharacterBody3D]) -> void:
     all_players = new_players
 
 func set_ai_slot(slot: int) -> void:
     ai_slot = slot
+    ai_bias = -1.0 if slot % 2 == 0 else 1.0
 
 func set_movement_enabled(enabled: bool) -> void:
     movement_enabled = enabled
