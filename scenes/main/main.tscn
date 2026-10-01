@@ -1,12 +1,24 @@
-[gd_scene format=3 uid="uid://bxk06n38rttfs"]
+[gd_scene load_steps=4 format=3 uid="uid://bxk06n38rttfs"]
+
+[ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_13qdw"]
 size = Vector2(20, 20)
 
+[sub_resource type="BoxShape3D" id="BoxShape_ground"]
+size = Vector3(20, 0.2, 20)
+
 [node name="Main" type="Node3D" unique_id=369473870]
+script = ExtResource("1_main")
 
 [node name="Ground" type="MeshInstance3D" parent="." unique_id=137150558]
 mesh = SubResource("PlaneMesh_13qdw")
+
+[node name="GroundCollision" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GroundCollision"]
+position = Vector3(0, -0.1, 0)
+shape = SubResource("BoxShape_ground")
 
 [node name="Camera" type="Camera3D" parent="." unique_id=1041718797]
 transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 10, 10)
