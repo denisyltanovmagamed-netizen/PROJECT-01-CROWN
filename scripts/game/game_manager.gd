@@ -5,7 +5,8 @@ const CLAIM_DISTANCE: float = 2.0
 const STEAL_DISTANCE: float = 1.15
 const STEAL_COOLDOWN: float = 0.12
 const COUNTDOWN_TIME: float = 3.0
-const ATTACK_LANE_RADIUS: float = 0.35
+const ATTACK_LANE_RADIUS: float = 0.75
+const ARENA_LIMIT: float = 15.0
 
 var round_time: float = ROUND_TIME
 var countdown_time: float = COUNTDOWN_TIME
@@ -181,8 +182,8 @@ func _update_ai_targets() -> void:
     holder_velocity.y = 0.0
     var predicted_time := 0.75
     var predicted_position := crown_holder.global_position + holder_velocity * predicted_time
-    predicted_position.x = clampf(predicted_position.x, -7.5, 7.5)
-    predicted_position.z = clampf(predicted_position.z, -7.5, 7.5)
+    predicted_position.x = clampf(predicted_position.x, -ARENA_LIMIT + 1.0, ARENA_LIMIT - 1.0)
+    predicted_position.z = clampf(predicted_position.z, -ARENA_LIMIT + 1.0, ARENA_LIMIT - 1.0)
 
     for index in range(attackers.size()):
         var player := attackers[index]
@@ -192,8 +193,8 @@ func _update_ai_targets() -> void:
             var side_angle := (TAU / maxf(1.0, float(attackers.size() - 1))) * float(index - 1)
             var side := Vector3(cos(side_angle), 0.0, sin(side_angle))
             var intercept_point := predicted_position + side * ATTACK_LANE_RADIUS
-            intercept_point.x = clampf(intercept_point.x, -8.0, 8.0)
-            intercept_point.z = clampf(intercept_point.z, -8.0, 8.0)
+            intercept_point.x = clampf(intercept_point.x, -ARENA_LIMIT + 1.0, ARENA_LIMIT - 1.0)
+            intercept_point.z = clampf(intercept_point.z, -ARENA_LIMIT + 1.0, ARENA_LIMIT - 1.0)
             player.set_target_point(crown_holder, intercept_point)
 
     # The crown holder runs away from the nearest opponent.
