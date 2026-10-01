@@ -63,6 +63,16 @@ func _handle_dummy_ai() -> void:
     if ai_target_is_crown:
         velocity.x = direction.x * move_speed * 0.78
         velocity.z = direction.z * move_speed * 0.78
+    elif get_meta("crown_holder", false):
+        var center_direction := Vector3(-global_position.x, 0.0, -global_position.z)
+        if center_direction.length_squared() > 0.01:
+            center_direction = center_direction.normalized()
+        else:
+            center_direction = Vector3.ZERO
+
+        var escape_direction := (-direction * 0.72 + center_direction * 0.65).normalized()
+        velocity.x = escape_direction.x * move_speed * 0.72
+        velocity.z = escape_direction.z * move_speed * 0.72
     else:
         var target_is_crown_holder: bool = target.get_meta("crown_holder", false)
         if target_is_crown_holder:
