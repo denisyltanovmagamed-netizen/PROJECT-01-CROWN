@@ -64,13 +64,19 @@ func _handle_dummy_ai() -> void:
         velocity.x = direction.x * move_speed * 0.78
         velocity.z = direction.z * move_speed * 0.78
     elif get_meta("crown_holder", false):
-        var center_direction := Vector3(-global_position.x, 0.0, -global_position.z)
-        if center_direction.length_squared() > 0.01:
-            center_direction = center_direction.normalized()
-        else:
-            center_direction = Vector3.ZERO
+        var distance_from_center := Vector2(global_position.x, global_position.z).length()
+        var escape_direction: Vector3
 
-        var escape_direction := (-direction * 0.35 + center_direction * 1.0).normalized()
+        # Inside the safe area, run directly away from the opponent.
+        # This prevents the holder from steering back into the central pedestal.
+        if distance_from_center < 6.0:
+            escape_direction = -direction
+        else:
+            # Near the arena edge, keep moving away from the opponent while
+            # steering back toward the center.
+            var center_direction := Vector3(-global_position.x, 0.0, -global_position.z).normalized()
+            escape_direction = (-direction * 0.8 + center_direction * 0.6).normalized()
+
         velocity.x = escape_direction.x * move_speed * 0.72
         velocity.z = escape_direction.z * move_speed * 0.72
     else:
