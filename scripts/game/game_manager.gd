@@ -3,7 +3,7 @@ extends Node
 const ROUND_TIME: float = 180.0
 const CLAIM_DISTANCE: float = 2.0
 const STEAL_DISTANCE: float = 1.15
-const STEAL_COOLDOWN: float = 1.5
+const STEAL_COOLDOWN: float = 0.35
 const COUNTDOWN_TIME: float = 3.0
 
 var round_time: float = ROUND_TIME
@@ -30,11 +30,15 @@ func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
     crown = new_crown
     crown_start_position = Vector3(0.0, 1.35, 0.0)
 
+    var dummy_slot := 0
     for player in players:
         scores[player.name] = 0.0
         player.set_meta("crown_holder", false)
         player.set_movement_enabled(false)
         player.set_ai_context(players)
+        if player.is_dummy:
+            player.set_ai_slot(dummy_slot)
+            dummy_slot += 1
 
     crown_holder = null
     crown.global_position = crown_start_position
@@ -174,7 +178,6 @@ func _update_ai_targets() -> void:
             direct_distance = distance
             direct_attacker = player
 
-    var flank_index := 0
     for player in players:
         if not player.is_dummy:
             continue
@@ -188,10 +191,20 @@ func _update_ai_targets() -> void:
             player.set_target(crown_holder)
             continue
 
-        var flank_angle := (TAU / 2.0) * flank_index + PI * 0.5
-        var flank_point := crown_holder.global_position + Vector3(cos(flank_angle), 0.0, sin(flank_angle)) * 2.6
+        var to_holder := crown_holder.global_position - player.global_position
+        to_holder.y = 0.0
+        if to_holder.length_squared() <= 0.01:
+            player.set_target(crown_holder)
+            continue
+
+        to_holder = to_holder.normalized()
+        var side := Vector3(-to_holder.z, 0.0, to_holder.x)
+
+        # Each non-direct AI gets a different interception lane.
+        # This prevents all attackers from choosing the same point.
+        var side_sign := 1.0 if player.ai_slot % 2 == 0 else -1.0
+        var flank_point := crown_holder.global_position + side * side_sign * 2.8 - to_holder * 0.8
         player.set_target_point(crown_holder, flank_point)
-        flank_index += 1
 
 func _find_nearest_opponent(from_player: CharacterBody3D) -> CharacterBody3D:
     var nearest: CharacterBody3D = null
