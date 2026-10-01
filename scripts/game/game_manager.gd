@@ -74,13 +74,13 @@ func _update_ui() -> void:
     if score_label != null:
         var lines: Array[String] = []
         for player in players:
-            lines.append("%s: %d с" % [player.name, int(scores[player.name])])
+            lines.append("%s: %d с" % [player.name, int(scores[player.name]))])
         score_label.text = "\n".join(lines)
 
 func _finish_round() -> void:
     set_process(false)
     status_label.text = "Раунд окончен"
-    var winner := crown_holder.name
+    var winner: String = crown_holder.name
     for player in players:
         if scores[player.name] > scores[winner]:
             winner = player.name
