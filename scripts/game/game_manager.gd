@@ -34,6 +34,7 @@ func setup(new_players: Array[CharacterBody3D], new_crown: Node3D) -> void:
         scores[player.name] = 0.0
         player.set_meta("crown_holder", false)
         player.set_movement_enabled(false)
+        player.set_ai_context(players)
 
     crown_holder = null
     crown.global_position = crown_start_position
@@ -148,11 +149,32 @@ func _update_ai_targets() -> void:
         return
 
     if crown_holder == null:
+        var dummy_index := 0
         for player in players:
-            if player.is_dummy:
-                player.set_crown_target(crown)
+            if not player.is_dummy:
+                continue
+
+            var angle := (TAU / 3.0) * dummy_index
+            var approach_point := crown.global_position + Vector3(cos(angle), 0.0, sin(angle)) * 1.0
+            player.set_target_point(crown, approach_point)
+            dummy_index += 1
         return
 
+    var attackers: Array[CharacterBody3D] = []
+    for player in players:
+        if player.is_dummy and player != crown_holder:
+            attackers.append(player)
+
+    var direct_attacker: CharacterBody3D = null
+    var direct_distance := INF
+
+    for player in attackers:
+        var distance := _horizontal_distance(player.global_position, crown_holder.global_position)
+        if distance < direct_distance:
+            direct_distance = distance
+            direct_attacker = player
+
+    var flank_index := 0
     for player in players:
         if not player.is_dummy:
             continue
@@ -160,8 +182,16 @@ func _update_ai_targets() -> void:
         if player == crown_holder:
             var nearest_opponent: CharacterBody3D = _find_nearest_opponent(player)
             player.set_target(nearest_opponent)
-        else:
+            continue
+
+        if player == direct_attacker:
             player.set_target(crown_holder)
+            continue
+
+        var flank_angle := (TAU / 2.0) * flank_index + PI * 0.5
+        var flank_point := crown_holder.global_position + Vector3(cos(flank_angle), 0.0, sin(flank_angle)) * 2.6
+        player.set_target_point(crown_holder, flank_point)
+        flank_index += 1
 
 func _find_nearest_opponent(from_player: CharacterBody3D) -> CharacterBody3D:
     var nearest: CharacterBody3D = null
