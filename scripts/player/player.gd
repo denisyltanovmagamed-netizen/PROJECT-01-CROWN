@@ -77,10 +77,18 @@ func _handle_dummy_ai() -> void:
     var distance_to_target := direction.length()
     direction = direction.normalized()
 
-    # Near the target, prioritize reaching the steal distance over separation.
-    # Otherwise separation can push attackers away forever before they get close enough to steal.
-    if distance_to_target > 1.8:
+    # Attackers do not run straight into the holder. Inside the approach zone,
+    # circle toward the holder so they can reach steal range without creating
+    # a head-on deadlock with another player.
+    if not get_meta("crown_holder", false) and distance_to_target <= 2.2:
+        var tangent := Vector3(-direction.z, 0.0, direction.x)
+        var side := 1.0 if ai_slot % 2 == 0 else -1.0
+        direction = (direction * 0.35 + tangent * side * 0.95).normalized()
+    elif distance_to_target > 1.8:
         direction = _apply_separation(direction)
+
+    if not get_meta("crown_holder", false):
+        direction = _avoid_obstacles(direction)
 
     if get_meta("crown_holder", false):
         var distance_from_center := Vector2(global_position.x, global_position.z).length()
