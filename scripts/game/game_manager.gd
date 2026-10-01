@@ -1,7 +1,7 @@
 extends Node
 
 const ROUND_TIME: float = 180.0
-const CLAIM_DISTANCE: float = 1.35
+const CLAIM_DISTANCE: float = 2.0
 const STEAL_DISTANCE: float = 1.8
 const STEAL_COOLDOWN: float = 0.75
 const COUNTDOWN_TIME: float = 3.0
@@ -76,7 +76,7 @@ func _process(delta: float) -> void:
 
 func _check_claim() -> void:
     for player in players:
-        if player.global_position.distance_to(crown_start_position) <= CLAIM_DISTANCE:
+        if _horizontal_distance(player.global_position, crown_start_position) <= CLAIM_DISTANCE:
             _set_crown_holder(player)
             status_label.text = "%s забрал корону!" % player.name
             return
@@ -89,11 +89,16 @@ func _check_steal() -> void:
         if player == crown_holder:
             continue
 
-        if player.global_position.distance_to(crown_holder.global_position) <= STEAL_DISTANCE:
+        if _horizontal_distance(player.global_position, crown_holder.global_position) <= STEAL_DISTANCE:
             _set_crown_holder(player)
             steal_cooldown = STEAL_COOLDOWN
             status_label.text = "%s украл корону!" % player.name
             return
+
+func _horizontal_distance(a: Vector3, b: Vector3) -> float:
+    var a_flat := Vector2(a.x, a.z)
+    var b_flat := Vector2(b.x, b.z)
+    return a_flat.distance_to(b_flat)
 
 func _set_crown_holder(player: CharacterBody3D) -> void:
     if crown_holder != null:
