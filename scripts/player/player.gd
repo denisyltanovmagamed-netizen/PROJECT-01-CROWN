@@ -11,6 +11,7 @@ var ai_use_target_point: bool = false
 var movement_enabled: bool = false
 var arena_limit: float = 9.0
 var all_players: Array[CharacterBody3D] = []
+var ai_slot: int = 0
 
 func _physics_process(_delta: float) -> void:
     if not movement_enabled:
@@ -108,14 +109,14 @@ func _apply_separation(direction: Vector3) -> Vector3:
         offset.y = 0.0
         var distance := offset.length()
 
-        if distance > 0.01 and distance < 2.2:
-            var strength := (2.2 - distance) / 2.2
+        if distance > 0.01 and distance < 3.0:
+            var strength := (3.0 - distance) / 3.0
             separation += offset.normalized() * strength
 
     if separation.length_squared() <= 0.01:
         return direction
 
-    return (direction + separation * 1.4).normalized()
+    return (direction + separation * 2.5).normalized()
 
 func set_target(new_target: Node3D) -> void:
     target = new_target
@@ -135,6 +136,9 @@ func set_target_point(new_target: Node3D, point: Vector3) -> void:
 
 func set_ai_context(new_players: Array[CharacterBody3D]) -> void:
     all_players = new_players
+
+func set_ai_slot(slot: int) -> void:
+    ai_slot = slot
 
 func set_movement_enabled(enabled: bool) -> void:
     movement_enabled = enabled
