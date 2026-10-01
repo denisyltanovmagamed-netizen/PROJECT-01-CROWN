@@ -66,7 +66,7 @@ func _process(delta: float) -> void:
         _update_crown()
         _check_steal()
     else:
-        _check_claim()
+        _check_claim_input()
 
     _update_ai_targets()
     _update_ui()
@@ -74,8 +74,17 @@ func _process(delta: float) -> void:
     if round_time <= 0.0:
         _finish_round()
 
-func _check_claim() -> void:
+func _check_claim_input() -> void:
+    if Input.is_key_pressed(KEY_E):
+        for player in players:
+            if player.is_local_player and _horizontal_distance(player.global_position, crown_start_position) <= CLAIM_DISTANCE:
+                _set_crown_holder(player)
+                status_label.text = "%s забрал корону!" % player.name
+                return
+
     for player in players:
+        if not player.is_dummy:
+            continue
         if _horizontal_distance(player.global_position, crown_start_position) <= CLAIM_DISTANCE:
             _set_crown_holder(player)
             status_label.text = "%s забрал корону!" % player.name
@@ -85,10 +94,19 @@ func _check_steal() -> void:
     if steal_cooldown > 0.0:
         return
 
-    for player in players:
-        if player == crown_holder:
-            continue
+    if Input.is_key_pressed(KEY_E):
+        for player in players:
+            if player == crown_holder or not player.is_local_player:
+                continue
+            if _horizontal_distance(player.global_position, crown_holder.global_position) <= STEAL_DISTANCE:
+                _set_crown_holder(player)
+                steal_cooldown = STEAL_COOLDOWN
+                status_label.text = "%s украл корону!" % player.name
+                return
 
+    for player in players:
+        if player == crown_holder or not player.is_dummy:
+            continue
         if _horizontal_distance(player.global_position, crown_holder.global_position) <= STEAL_DISTANCE:
             _set_crown_holder(player)
             steal_cooldown = STEAL_COOLDOWN
